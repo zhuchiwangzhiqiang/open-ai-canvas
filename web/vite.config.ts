@@ -17,6 +17,8 @@ export default defineConfig({
         "import.meta.env.VITE_APP_VERSION": JSON.stringify(appVersion),
     },
     server: {
+        // 内网穿透访问 dev server 的域名白名单（Vite DNS 重绑定防护默认仅放行 localhost）
+        allowedHosts: ["zhuchi2023.gnway.cc"],
         proxy: {
             "/api": {
                 target: apiProxyTarget,
