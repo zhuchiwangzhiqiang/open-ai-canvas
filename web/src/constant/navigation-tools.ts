@@ -1,10 +1,16 @@
-import { Blocks, CircleDollarSign, Clapperboard, Images, LibraryBig, ListTodo, PanelsTopLeft, Settings, WandSparkles } from "lucide-react";
+import { Blocks, CircleDollarSign, Clapperboard, Images, LibraryBig, ListTodo, PanelsTopLeft, Settings, UserRound, WandSparkles } from "lucide-react";
 
 export const navigationTools = [
     {
         slug: "create",
         label: "创作",
         icon: WandSparkles,
+        section: "创作空间",
+    },
+    {
+        slug: "ai-model",
+        label: "AI 模特",
+        icon: UserRound,
         section: "创作空间",
     },
     {

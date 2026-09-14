@@ -132,6 +132,24 @@ SEO 标题、描述、可选关键词会投影到浏览器 metadata、Open Graph
 - `web/src/services/plugin-host.ts`：将插件文本请求接入宿主现有模型渠道。
 - `web/src/pages/create/index.tsx`、`web/src/components/canvas/canvas-node-prompt-panel.tsx`：两个入口的接入。
 
+## AI 模特
+
+AI 模特页（`/ai-model`）用结构化属性加可选描述生成可复用的数字模特，供后续商业主图、试穿等场景复用。属性分为性别、国籍、风格、年龄、体型、肤色、姿势七组，并提供四套一键预填原型；描述可以留空，只按属性生成。
+
+页面副标题的“一致出图”由两阶段生成兑现，而不是一次批量出图。现有批量生成是多次互相独立的请求，纯文生图时每次独立采样，结果会是不同的人。AI 模特先生成一张母版锁定人物身份，再把母版作为参考图派生其余张数：带参考图的任务自动走图生图，派生 prompt 保持身份属性逐字不变，只改写姿势与场景。派生默认轮换姿势，可在表单关闭。
+
+模型能力决定一致性上限。所选模型的图片能力 `references.maxImages` 为 0 时无法用参考图锚定身份，页面降级为并发的候选图，并在结果区明确标注“未锁定同一人”，不会把候选图伪装成同一位模特。生成数量固定为 3 张，每个任务只产出一张，张数完全由任务数决定。
+
+生成沿用后端任务链路，因此积分计费、取消、失败重试和任务记录与其它生成能力一致。结果图会落成本地资源并写入按用户隔离的历史记录，后端不可用时上传自动退回 IndexedDB，刷新后仍可在“历史记录”页签回看。把结果登记为可复用主体（`assets.subject_type`）以及「AI 模特图」试穿能力尚未实现。
+
+### 相关实现
+
+- `web/src/pages/ai-model/index.tsx`：页面协调、模型选择、积分预估、两阶段提交与本地历史写入。
+- `web/src/lib/design/model-portrait-pipeline.ts`：锚定/派生两阶段管线、参考图能力探测、候选图降级与失败聚合。
+- `web/src/lib/design/model-attributes.ts`、`web/src/lib/design/model-prompt.ts`：属性协议与白名单、原型预设、锚定/派生 prompt 组装（纯函数）。
+- `web/src/pages/ai-model/model-history-store.ts`：按用户 scope 的历史记录与结果图片落地。
+- `web/test/model-prompt.test.ts`、`web/test/model-portrait-pipeline.test.ts`：prompt 组装与两阶段编排的单元测试，注入生成入口后不触达后端。
+
 ## 首页图片预览与画布同款查看器
 
 创作页 `/create` 的生成结果、参考图片和故事板图片，打开后使用与画布图片节点相同的全屏图片查看器。首页不再维护独立的图片缩放和拖拽实现，避免两个入口的交互行为逐渐分叉。

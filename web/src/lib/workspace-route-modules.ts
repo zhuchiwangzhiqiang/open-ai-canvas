@@ -1,4 +1,5 @@
 const workspaceRouteLoaders = {
+    "ai-model": () => import("@/pages/ai-model"),
     assets: () => import("@/pages/assets"),
     canvas: () => import("@/pages/canvas"),
     create: () => import("@/pages/create"),
@@ -7,6 +8,7 @@ const workspaceRouteLoaders = {
     wallet: () => import("@/pages/wallet"),
 };
 
+export const loadAiModelPage = workspaceRouteLoaders["ai-model"];
 export const loadAssetsPage = workspaceRouteLoaders.assets;
 export const loadCanvasPage = workspaceRouteLoaders.canvas;
 export const loadCanvasProjectPage = () => import("@/pages/canvas/project");
