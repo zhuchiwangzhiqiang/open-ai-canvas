@@ -18,7 +18,5 @@
         }
     },
     "include": ["vite.config.ts", "src/**/*.ts", "src/**/*.tsx"],
-    // 测试不属于构建产物：test/ 目录本就不在 include 内，这里同步排除 src 下的测试，
-    // 避免它们依赖的 bun:test 在缺少 bun 类型包时报 TS2307（上游 8e82e67c 引入）。
-    "exclude": ["node_modules", "src/**/*.test.ts", "src/**/*.test.tsx"]
+    "exclude": ["node_modules"]
 }
