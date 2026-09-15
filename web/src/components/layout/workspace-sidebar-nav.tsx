@@ -42,12 +42,24 @@ function toolItem(slug: NavigationToolSlug, to: string): WorkspaceNavItem {
     return { id: slug, title: tool?.label ?? slug, icon: tool?.icon, to };
 }
 
+function isNavItemActive(item: WorkspaceNavItem, activeId: string) {
+    if (item.id === activeId) return true;
+    // 设置页子项沿用 /settings?section=<key> 路由合同。
+    return item.id === "settings" && activeId.startsWith("settings:");
+}
+
+/** 分支内任意后代命中即视为位于当前分支，用于自动展开父级而不是高亮父级。 */
+function isNavBranchActive(item: WorkspaceNavItem, activeId: string): boolean {
+    return isNavItemActive(item, activeId) || Boolean(item.children?.some((child) => isNavBranchActive(child, activeId)));
+}
+
 function buildNav(features: FeatureAvailability, balance: string, isAdmin: boolean): { groups: WorkspaceNavGroup[]; footer: WorkspaceNavItem[] } {
     const groups: WorkspaceNavGroup[] = [
         {
             items: [
                 { id: "home", title: "首页", icon: Home, to: "/" },
 toolItem("projects", "/projects"),
+                toolItem("design", "/design"),
                 toolItem("canvas", "/canvas"),
                 ...(features.taskCenterEnabled ? [toolItem("tasks", "/tasks")] : []),
                 toolItem("assets", "/assets"),
@@ -165,14 +177,15 @@ function NavItem({
     level?: number;
     collapsed?: boolean;
 }) {
-    const isActive = activeId === item.id || (item.id === "settings" && activeId.startsWith("settings:"));
+    const isActive = isNavItemActive(item, activeId);
+    const branchActive = isNavBranchActive(item, activeId);
     const hasChildren = Boolean(item.children?.length);
     const [isOpen, setIsOpen] = useState(false);
 
-    // 激活分支自动展开（如设置分区子项），保证当前位置可见。
+    // 激活分支自动展开（设置分区子项、设计中心等），保证当前位置可见。
     useEffect(() => {
-        if (isActive && hasChildren) setIsOpen(true);
-    }, [isActive, hasChildren]);
+        if (branchActive && hasChildren) setIsOpen(true);
+    }, [branchActive, hasChildren]);
 
     const Icon = item.icon;
     const rowStyle = collapsed ? undefined : ({ paddingLeft: `${level * 12 + 10}px` } as CSSProperties);
@@ -260,7 +273,7 @@ function NavItem({
 
 function NavGroup({ group, activeId, onNavigate, onOpenSearch, onLogout, collapsed }: { group: WorkspaceNavGroup; activeId: string; onNavigate: () => void; onOpenSearch: () => void; onLogout: () => void; collapsed: boolean }) {
     const [isOpen, setIsOpen] = useState(true);
-    const hasActive = group.items.some((item) => item.id === activeId || (item.id === "settings" && activeId.startsWith("settings:")));
+    const hasActive = group.items.some((item) => isNavBranchActive(item, activeId));
 
     // 激活项所在分组自动展开，保证当前位置可见。
     useEffect(() => {

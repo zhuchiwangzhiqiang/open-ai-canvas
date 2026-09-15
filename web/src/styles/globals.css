@@ -4330,6 +4330,12 @@
     .library-page .app-page-header h1 {
         letter-spacing: -0.01em;
     }
+
+    /* AI 模特工作台的两个入口（设计中心 / /ai-model）：页头已紧邻顶栏，再叠全局 padding-top 会显得空。 */
+    .design-center-page .app-page-header,
+    .ai-model-page .app-page-header {
+        padding-top: 0;
+    }
     .app-projects-header-meta {
         display: inline-flex;
         align-items: center;
