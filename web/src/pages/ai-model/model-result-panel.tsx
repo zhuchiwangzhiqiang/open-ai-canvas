@@ -2,6 +2,7 @@ import { Button } from "antd";
 import { saveAs } from "file-saver";
 import { Download, Maximize2 } from "lucide-react";
 import { useState } from "react";
+import { useNavigate } from "react-router";
 
 import { WorkspaceState } from "@/components/layout/workspace-state";
 import type { AiModelPhase, AiModelPortrait, AiModelPortraitResult } from "@/lib/design/model-portrait-pipeline";
@@ -45,6 +46,7 @@ export function ModelResultPanel({
     count,
     model,
     description,
+    assetSync,
     onRetry,
 }: {
     result: AiModelPortraitResult | null;
@@ -54,8 +56,11 @@ export function ModelResultPanel({
     count: number;
     model: string;
     description: string;
+    /** 生成图入素材库的状态；入库是附带动作，失败不影响结果本身。 */
+    assetSync: { pending: boolean; saved: number; failed: number; remotePending: boolean };
     onRetry: () => void;
 }) {
+    const navigate = useNavigate();
     const [previewIndex, setPreviewIndex] = useState<number | null>(null);
 
     if (busy && phase) return <ModelGenerationProgress phase={phase} />;
@@ -85,6 +90,18 @@ export function ModelResultPanel({
                     <span className="rounded border border-border bg-surface-active px-1.5 py-0.5">当前模型不支持参考图，未锁定同一人</span>
                 )}
                 <span>共 {result.portraits.length} 张</span>
+                {assetSync.pending ? <span className="text-foreground/45">正在存入素材库…</span> : null}
+                {!assetSync.pending && assetSync.saved > 0 ? (
+                    <button
+                        type="button"
+                        className="rounded border border-border bg-surface-active px-1.5 py-0.5 text-foreground/70 transition-colors hover:text-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1"
+                        onClick={() => navigate("/assets")}
+                    >
+                        已存入素材库 {assetSync.saved} 张 · 去查看
+                    </button>
+                ) : null}
+                {!assetSync.pending && assetSync.failed > 0 ? <span className="text-destructive">{assetSync.failed} 张未能存入素材库</span> : null}
+                {!assetSync.pending && assetSync.failed === 0 && assetSync.remotePending ? <span className="text-foreground/45">（本地已保存，云端待同步）</span> : null}
             </div>
             <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
                 {result.portraits.map((portrait, index) => (

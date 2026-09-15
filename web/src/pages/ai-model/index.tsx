@@ -16,6 +16,7 @@ import { ModelHistoryPanel } from "@/pages/ai-model/model-history-panel";
 import { appendAiModelHistory, readAiModelHistory, type AiModelHistoryRecord } from "@/pages/ai-model/model-history-store";
 import { ModelPresetCards } from "@/pages/ai-model/model-preset-cards";
 import { ModelResultPanel } from "@/pages/ai-model/model-result-panel";
+import { saveAiModelRecordToAssets } from "@/pages/ai-model/model-asset-sync";
 import { isGenerationTaskCancelled } from "@/services/api/generation-task";
 import { modelOptionName, resolveModelChannel, useEffectiveConfig, type AiConfig } from "@/stores/use-config-store";
 
@@ -52,6 +53,7 @@ export function AiModelWorkbench() {
     const [tab, setTab] = useState<"result" | "history">("result");
     const [history, setHistory] = useState<AiModelHistoryRecord[]>([]);
     const [historyLoading, setHistoryLoading] = useState(true);
+    const [assetSync, setAssetSync] = useState<{ pending: boolean; saved: number; failed: number; remotePending: boolean }>({ pending: false, saved: 0, failed: 0, remotePending: false });
     const abortRef = useRef<AbortController | null>(null);
 
     // 模型渠道可能在挂载后才完成同步，这里只在空值时补一次默认值。
@@ -121,9 +123,21 @@ export function AiModelWorkbench() {
                 onPhase: setPhase,
             });
             setResult(generated);
+            // 入库必须晚于历史记录：历史已经把图落成资源，素材直接复用同一份 storageKey，
+            // 既不会重复上传，也让入库键（历史记录 ID + 序号）在自动入库和手动补录之间保持一致。
+            setAssetSync({ pending: true, saved: 0, failed: 0, remotePending: false });
             void appendAiModelHistory({ model: selectedModel, description, attributes, consistency: generated.consistency, portraits: generated.portraits })
-                .then(setHistory)
-                .catch(() => undefined);
+                .then(async (records) => {
+                    setHistory(records);
+                    const created = records[0];
+                    if (!created) throw new Error("历史记录未返回新记录");
+                    const synced = await saveAiModelRecordToAssets(created, controller.signal);
+                    setAssetSync({ pending: false, saved: synced.assetIds.length, failed: synced.failed, remotePending: synced.remotePending });
+                })
+                .catch(() => {
+                    // 入库/历史都是附带动作：生成已经成功，落库失败只降级提示，不影响结果。
+                    setAssetSync({ pending: false, saved: 0, failed: generated.portraits.length, remotePending: false });
+                });
         } catch (thrown) {
             if (isGenerationTaskCancelled(thrown, controller.signal)) message.info("已取消生成");
             else setError(generationErrorMessage(thrown));
@@ -231,7 +245,7 @@ export function AiModelWorkbench() {
                 </div>
                 <div className="hide-scrollbar mt-3 xl:min-h-0 xl:flex-1 xl:overflow-y-auto xl:overscroll-contain">
                     {tab === "result" ? (
-                        <ModelResultPanel result={result} phase={phase} error={error} busy={busy} count={PORTRAIT_COUNT} model={selectedModel} description={description} onRetry={() => void generate()} />
+                        <ModelResultPanel result={result} phase={phase} error={error} busy={busy} count={PORTRAIT_COUNT} model={selectedModel} description={description} assetSync={assetSync} onRetry={() => void generate()} />
                     ) : (
                         <ModelHistoryPanel records={history} loading={historyLoading} />
                     )}
