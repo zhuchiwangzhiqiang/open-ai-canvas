@@ -1,12 +1,57 @@
 package app
 
 import (
+	"encoding/json"
 	"reflect"
 	"strings"
 	"testing"
 
 	"infinite-canvas/backend/internal/canvas/capability"
+	"infinite-canvas/backend/internal/model"
 )
+
+func TestCloudAgentMixedCanvasReadsUnsupportedNodesWithoutGrantingCapabilities(t *testing.T) {
+	nodes := []map[string]any{{"id": "text", "type": "text", "metadata": map[string]any{"content": "readable"}}}
+	for _, kind := range []string{"ai-art-critique", "config", "drawing", "future-plugin"} {
+		nodes = append(nodes, map[string]any{"id": kind, "type": kind, "title": "插件节点", "position": map[string]any{"x": 10.0, "y": 20.0}, "metadata": map[string]any{"content": "PRIVATE_SENTINEL", "apiKey": "PRIVATE_SENTINEL"}})
+		if _, supported := cloudAgentNodeCapabilityForType(kind); supported {
+			t.Fatalf("unsupported type gained write capability: %s", kind)
+		}
+		if err := validateCreationOps([]CreationCanvasOp{{Type: "add_node", ID: "new", NodeType: kind}}); err == nil {
+			t.Fatalf("unsupported creation accepted: %s", kind)
+		}
+		if _, _, err := cloudAgentReferenceDescriptor(nodes[len(nodes)-1]); err == nil {
+			t.Fatalf("unsupported media reference accepted: %s", kind)
+		}
+		if err := validateCloudAgentConnection(nodes, kind, "text"); err == nil {
+			t.Fatalf("unsupported connection accepted: %s", kind)
+		}
+	}
+	doc := map[string]any{"nodes": nodes, "connections": []map[string]any{{"id": "edge", "fromNodeId": "drawing", "toNodeId": "text"}}}
+	raw, _ := json.Marshal(doc)
+	summary, err := cloudAgentCanvasSummary(&model.CanvasProject{PayloadJSON: string(raw)})
+	if err != nil || strings.Contains(summary, "PRIVATE_SENTINEL") || !strings.Contains(summary, `"agentSupported":false`) {
+		t.Fatalf("mixed summary failed or leaked metadata: %v", err)
+	}
+	for _, ids := range [][]string{nil, {"drawing", "config"}} {
+		view, err := cloudAgentCanvasState(nil, "user", doc, 0, ids, 0)
+		if err != nil {
+			t.Fatal(err)
+		}
+		result := view.(map[string]any)
+		encoded, _ := json.Marshal(result)
+		if strings.Contains(string(encoded), "PRIVATE_SENTINEL") || result["snapshotHash"] != cloudAgentCanvasHash(doc) || len(result["connections"].([]any)) != 1 {
+			t.Fatal("unsafe projection or lost snapshot/connection")
+		}
+		want := len(nodes)
+		if ids != nil {
+			want = len(ids)
+		}
+		if len(result["nodes"].([]any)) != want {
+			t.Fatal("nodes silently omitted")
+		}
+	}
+}
 
 func TestCloudAgentToolsFollowCanvasCapabilityRegistry(t *testing.T) {
 	req := agentTestRequest()
@@ -64,6 +109,28 @@ func TestCloudAgentPolicyPublishesSkillManifestWithoutInliningSkillBody(t *testi
 	}
 	if strings.Contains(text, skill.Instruction) || !strings.Contains(text, `"entryPath":"SKILL.md"`) || !strings.Contains(text, `"files":["SKILL.md","references/a.md"]`) {
 		t.Fatalf("compiled policy did not publish a safe on-demand skill manifest: %s", text)
+	}
+}
+
+func TestCloudAgentPolicyPublishesCapabilityRoutingGuide(t *testing.T) {
+	text, _, err := compileCloudAgentPolicies(agentTestRequest(), nil, "", cloudAgentProfileSnapshot{Revision: agentProfileRevision(nil), Hash: agentProfileHash("")})
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, expected := range []string{
+		"节点能力速查",
+		"由服务端能力注册表生成",
+		"分镜脚本（script）",
+		"多镜头",
+		"逐镜审查",
+		"后续维护",
+		"单画面、一次性说明或快速试验优先轻量节点",
+		"普通文本或 Markdown 不能伪装成结构化分镜",
+		"不为形式强制使用任何节点",
+	} {
+		if !strings.Contains(text, expected) {
+			t.Fatalf("compiled policy omitted capability routing guidance %q: %s", expected, text)
+		}
 	}
 }
 

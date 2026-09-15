@@ -25,22 +25,23 @@ import (
 var sseFrameBoundaryPattern = regexp.MustCompile(`\r?\n\r?\n`)
 
 type canvasGenerationInput struct {
-	Mode            string                 `json:"mode"`
-	Prompt          string                 `json:"prompt"`
-	Config          providerConfig         `json:"config"`
-	ReferenceImages []providerMedia        `json:"referenceImages"`
-	ReferenceVideos []providerMedia        `json:"referenceVideos"`
-	ReferenceAudios []providerMedia        `json:"referenceAudios"`
-	TextHistory     []providerTextMessage  `json:"textHistory"`
-	Mask            *providerMedia         `json:"mask"`
-	Metadata        map[string]interface{} `json:"metadata"`
-	AgentRequests   *agentToolRequests     `json:"agentRequests"`
-	TextOptions     canvasTextOptions      `json:"textOptions"`
-	ImageCapability *ImageCapabilityConfig `json:"-"`
-	StreamText      bool                   `json:"-"` // 分镜请求使用上游 SSE 保活；最终结构仍在流结束后统一校验。
-	MaxOutputTokens int                    `json:"-"`
-	OnTextDelta     func(string)           `json:"-"`
-	VideoCapability *VideoCapabilityConfig `json:"-"`
+	Mode             string                 `json:"mode"`
+	Prompt           string                 `json:"prompt"`
+	Config           providerConfig         `json:"config"`
+	ReferenceImages  []providerMedia        `json:"referenceImages"`
+	ReferenceVideos  []providerMedia        `json:"referenceVideos"`
+	ReferenceAudios  []providerMedia        `json:"referenceAudios"`
+	TextHistory      []providerTextMessage  `json:"textHistory"`
+	Mask             *providerMedia         `json:"mask"`
+	Metadata         map[string]interface{} `json:"metadata"`
+	AgentRequests    *agentToolRequests     `json:"agentRequests"`
+	TextOptions      canvasTextOptions      `json:"textOptions"`
+	ImageCapability  *ImageCapabilityConfig `json:"-"`
+	StreamText       bool                   `json:"-"` // 分镜请求使用上游 SSE 保活；最终结构仍在流结束后统一校验。
+	MaxOutputTokens  int                    `json:"-"`
+	OnTextDelta      func(string)           `json:"-"`
+	OnReasoningDelta func(string)           `json:"-"`
+	VideoCapability  *VideoCapabilityConfig `json:"-"`
 }
 
 type canvasTextOptions struct {
@@ -302,9 +303,9 @@ func providerPayloadErrorCategory(raw string) (string, bool) {
 		return "模型不存在或当前渠道未获得模型权限", true
 	// 推理/思考模式模型通常禁止强制指定工具调用：DeepSeek 思考模式返回
 	// "Thinking mode does not support this tool_choice"，其他 OpenAI 兼容
-	// 供应商措辞类似。归为固定可行动原因，画布智能体据此把首步的
-	// tool_choice=required 降级为 auto 重试一次。排在通用参数类目之前，
-	// 避免这类稳定标识落回笼统的"请检查模型和参数"。
+	// 供应商措辞类似。归为固定可行动原因；显式思考模式会在出站前省略
+	// tool_choice，未声明但由上游隐式开启思考时再按兼容序列重试。排在
+	// 通用参数类目之前，避免稳定标识落回笼统的"请检查模型和参数"。
 	case (strings.Contains(normalized, "thinking") || strings.Contains(normalized, "reasoning")) && strings.Contains(normalized, "tool_choice"),
 		strings.Contains(normalized, "tool_choice") && (strings.Contains(normalized, "not support") || strings.Contains(normalized, "unsupported")):
 		return "当前模型为思考/推理模式，不支持强制工具调用（tool_choice=required），请改用自动工具选择或更换非思考模式模型", true
@@ -359,6 +360,12 @@ func (s *Service) processCanvasGenerationTask(ctx context.Context, userID string
 	}
 	if input.Mode == "text" && strings.HasPrefix(taskType, "canvas_text") && input.StreamText {
 		textPublisher = newTaskTextStreamPublisher(s, userID, taskExecutionID(ctx))
+		if input.AgentRequests != nil {
+			textPublisher = newCloudAgentStreamPublisher(s, userID, taskExecutionID(ctx), "assistant_delta")
+			reasoningPublisher := newCloudAgentStreamPublisher(s, userID, taskExecutionID(ctx), "reasoning_delta")
+			input.OnReasoningDelta = reasoningPublisher.Publish
+			defer reasoningPublisher.Close()
+		}
 		input.OnTextDelta = textPublisher.Publish
 		defer textPublisher.Close()
 	}
