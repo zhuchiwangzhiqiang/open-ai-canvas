@@ -2,14 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 // Bun 直接执行 TypeScript 测试时需要保留扩展名；生产 tsconfig 不包含 test/。
-import {
-    clampPortraitCount,
-    derivedPoses,
-    generateAiModelPortraits,
-    supportsModelReference,
-    type AiModelGenerationRunner,
-    type AiModelPhase,
-} from "../src/lib/design/model-portrait-pipeline.ts";
+import { clampPortraitCount, derivedPoses, generateAiModelPortraits, supportsModelReference, type AiModelGenerationRunner, type AiModelPhase } from "../src/lib/design/model-portrait-pipeline.ts";
 import type { BackendGenerationResult } from "../src/services/api/generation-task.ts";
 import type { AiConfig } from "../src/stores/use-config-store.ts";
 
@@ -70,6 +63,12 @@ test("支持参考图时先出母版，再以母版为参考图派生剩余张�
     assert.ok(taskCalls[1].prompt.includes("一致性要求"));
     assert.notEqual(taskCalls[1].prompt, taskCalls[2].prompt);
 
+    // 预览面板直接展示 portrait.prompt，它必须逐字等于当时发给上游的那段文本。
+    assert.deepEqual(
+        result.portraits.map((portrait) => portrait.prompt),
+        taskCalls.map((call) => call.prompt),
+    );
+
     assert.deepEqual(phases[0], { phase: "anchoring" });
     assert.deepEqual(phases[phases.length - 1], { phase: "deriving", done: 2, total: 2 });
 });
@@ -101,6 +100,7 @@ test("模型不吃参考图时退化为候选图，并标记未锁定身份", as
         result.portraits.map((portrait) => portrait.role),
         ["candidate", "candidate", "candidate"],
     );
+    assert.ok(result.portraits.every((portrait) => portrait.prompt === batchCalls[0].prompt));
 });
 
 test("派生单张失败时保留其余结果并记录失败项", async () => {

@@ -1,11 +1,13 @@
 import { Button } from "antd";
 import { saveAs } from "file-saver";
-import { Download } from "lucide-react";
+import { Download, Maximize2 } from "lucide-react";
+import { useState } from "react";
 
 import { WorkspaceState } from "@/components/layout/workspace-state";
 import type { AiModelPhase, AiModelPortrait, AiModelPortraitResult } from "@/lib/design/model-portrait-pipeline";
 import { cn } from "@/lib/utils";
 import { ModelGenerationProgress } from "@/pages/ai-model/model-generation-progress";
+import { AiModelPreview } from "@/pages/ai-model/model-preview";
 
 const roleLabels: Record<AiModelPortrait["role"], string> = {
     anchor: "母版",
@@ -13,13 +15,16 @@ const roleLabels: Record<AiModelPortrait["role"], string> = {
     candidate: "候选",
 };
 
-function PortraitCard({ portrait, index }: { portrait: AiModelPortrait; index: number }) {
+function PortraitCard({ portrait, index, onOpen }: { portrait: AiModelPortrait; index: number; onOpen: () => void }) {
     return (
         <figure className="group relative overflow-hidden rounded-md border border-border bg-surface">
-            <img src={portrait.image.dataUrl} alt={`AI 模特 ${index + 1}`} className="aspect-[3/4] w-full object-cover" loading="lazy" />
-            <span className={cn("absolute left-2 top-2 rounded px-1.5 py-0.5 text-[var(--fs-micro)] font-medium text-white", portrait.role === "anchor" ? "bg-black/70" : "bg-black/55")}>
-                {roleLabels[portrait.role]}
-            </span>
+            <button type="button" aria-label={`放大预览第 ${index + 1} 张模特图`} className="block w-full focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1" onClick={onOpen}>
+                <img src={portrait.image.dataUrl} alt={`AI 模特 ${index + 1}`} className="aspect-[3/4] w-full object-cover" loading="lazy" />
+                <span className="absolute inset-0 grid place-items-center bg-black/35 text-white opacity-0 transition-opacity group-hover:opacity-100 motion-reduce:transition-none" aria-hidden="true">
+                    <Maximize2 className="size-4" />
+                </span>
+            </button>
+            <span className={cn("absolute left-2 top-2 rounded px-1.5 py-0.5 text-[length:var(--fs-micro)] font-medium text-white", portrait.role === "anchor" ? "bg-black/70" : "bg-black/55")}>{roleLabels[portrait.role]}</span>
             <button
                 type="button"
                 aria-label={`下载第 ${index + 1} 张模特图`}
@@ -38,6 +43,8 @@ export function ModelResultPanel({
     error,
     busy,
     count,
+    model,
+    description,
     onRetry,
 }: {
     result: AiModelPortraitResult | null;
@@ -45,14 +52,18 @@ export function ModelResultPanel({
     error: string;
     busy: boolean;
     count: number;
+    model: string;
+    description: string;
     onRetry: () => void;
 }) {
+    const [previewIndex, setPreviewIndex] = useState<number | null>(null);
+
     if (busy && phase) return <ModelGenerationProgress phase={phase} />;
 
     if (error) {
         return (
             <div className="rounded-md border border-border bg-surface p-4">
-                <div className="text-[var(--fs-label)] font-medium text-foreground">生成失败</div>
+                <div className="text-[length:var(--fs-label)] font-medium text-foreground">生成失败</div>
                 <p className="mt-1.5 text-xs leading-5 text-foreground/58">{error}</p>
                 <Button className="mt-3" onClick={onRetry}>
                     重试
@@ -67,7 +78,7 @@ export function ModelResultPanel({
 
     return (
         <div className="space-y-3">
-            <div className="flex flex-wrap items-center gap-2 text-[var(--fs-micro)] text-foreground/58">
+            <div className="flex flex-wrap items-center gap-2 text-[length:var(--fs-micro)] text-foreground/58">
                 {result.consistency === "referenced" ? (
                     <span className="rounded border border-primary/40 bg-primary/10 px-1.5 py-0.5 text-primary">已锁定同一模特</span>
                 ) : (
@@ -77,17 +88,27 @@ export function ModelResultPanel({
             </div>
             <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
                 {result.portraits.map((portrait, index) => (
-                    <PortraitCard key={portrait.id} portrait={portrait} index={index} />
+                    <PortraitCard key={portrait.id} portrait={portrait} index={index} onOpen={() => setPreviewIndex(index)} />
                 ))}
             </div>
             {result.failed.length ? (
-                <ul className="space-y-1 rounded-md border border-border bg-surface px-3 py-2 text-[var(--fs-micro)] text-foreground/58">
+                <ul className="space-y-1 rounded-md border border-border bg-surface px-3 py-2 text-[length:var(--fs-micro)] text-foreground/58">
                     {result.failed.map((failure) => (
                         <li key={failure.index}>
                             第 {failure.index + 1} 张派生失败：{failure.error}
                         </li>
                     ))}
                 </ul>
+            ) : null}
+            {previewIndex !== null ? (
+                <AiModelPreview
+                    title={description.trim() || "本次生成结果"}
+                    model={model}
+                    images={result.portraits.map((portrait) => ({ url: portrait.image.dataUrl, role: portrait.role, prompt: portrait.prompt }))}
+                    index={previewIndex}
+                    onIndexChange={setPreviewIndex}
+                    onClose={() => setPreviewIndex(null)}
+                />
             ) : null}
         </div>
     );

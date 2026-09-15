@@ -20,8 +20,8 @@ export function ModelPresetCards({ activeId, onApply, disabled = false }: { acti
                         )}
                         onClick={() => onApply(preset)}
                     >
-                        <div className="text-[var(--fs-label)] font-medium text-foreground">{preset.title}</div>
-                        <div className="mt-1 text-[var(--fs-micro)] leading-4 text-foreground/52">{preset.summary}</div>
+                        <div className="text-[length:var(--fs-label)] font-medium text-foreground">{preset.title}</div>
+                        <div className="mt-1 text-[length:var(--fs-micro)] leading-4 text-foreground/52">{preset.summary}</div>
                     </button>
                 );
             })}

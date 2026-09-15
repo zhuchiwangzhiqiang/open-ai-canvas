@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 // Bun 直接执行 TypeScript 测试时需要保留扩展名；生产 tsconfig 不包含 test/。
-import { isEmptyModelAttributes, normalizeModelAttributes } from "../src/lib/design/model-attributes.ts";
+import { ATTRIBUTE_GROUPS, DEFAULT_MODEL_ATTRIBUTES, isEmptyModelAttributes, normalizeModelAttributes } from "../src/lib/design/model-attributes.ts";
 import { buildModelAnchorPrompt, buildModelVariantPrompt } from "../src/lib/design/model-prompt.ts";
 
 const attributes = {
@@ -20,14 +20,7 @@ const identity = "女模特、亚洲、青年、高挑、白皙";
 test("锚定 prompt 按身份、风格、姿势的固定顺序组装并保留描述", () => {
     const prompt = buildModelAnchorPrompt(attributes, "清冷气质，短发");
 
-    assert.equal(
-        prompt,
-        [
-            "清冷气质，短发",
-            `模特设定：${identity}、简约摄影棚、站姿正面。`,
-            "输出要求：全身写实商业人像摄影，面部清晰，简洁纯净背景，自然光，无文字水印。",
-        ].join("\n"),
-    );
+    assert.equal(prompt, ["清冷气质，短发", `模特设定：${identity}、简约摄影棚、站姿正面。`, "输出要求：全身写实商业人像摄影，面部清晰，简洁纯净背景，自然光，无文字水印。"].join("\n"));
 });
 
 test("派生 prompt 保持身份短语逐字不变，只替换姿势", () => {
@@ -58,10 +51,7 @@ test("不在白名单内的取值不会进入 prompt", () => {
 test("空描述不产生多余空行，且仍保留设定与输出要求", () => {
     const prompt = buildModelAnchorPrompt(attributes, "   ");
 
-    assert.equal(
-        prompt,
-        [`模特设定：${identity}、简约摄影棚、站姿正面。`, "输出要求：全身写实商业人像摄影，面部清晰，简洁纯净背景，自然光，无文字水印。"].join("\n"),
-    );
+    assert.equal(prompt, [`模特设定：${identity}、简约摄影棚、站姿正面。`, "输出要求：全身写实商业人像摄影，面部清晰，简洁纯净背景，自然光，无文字水印。"].join("\n"));
 });
 
 test("normalizeModelAttributes 丢弃未知分组并去除首尾空白", () => {
@@ -71,4 +61,11 @@ test("normalizeModelAttributes 丢弃未知分组并去除首尾空白", () => {
     assert.equal(isEmptyModelAttributes({ gender: "不存在" }), true);
     assert.equal(isEmptyModelAttributes(undefined), true);
     assert.equal(isEmptyModelAttributes({ pose: "回眸" }), false);
+});
+
+// 默认值是写死在表单里的字面量，一旦拼错会被白名单静默丢掉、用户看不到任何报错。
+test("表单默认属性全部在白名单内且非空", () => {
+    assert.deepEqual(normalizeModelAttributes(DEFAULT_MODEL_ATTRIBUTES), DEFAULT_MODEL_ATTRIBUTES);
+    assert.equal(Object.keys(DEFAULT_MODEL_ATTRIBUTES).length, ATTRIBUTE_GROUPS.length);
+    assert.equal(isEmptyModelAttributes(DEFAULT_MODEL_ATTRIBUTES), false);
 });

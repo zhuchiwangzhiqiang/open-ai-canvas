@@ -10,7 +10,8 @@ const store = localforage.createInstance({ name: "infinite-canvas", storeName: "
 const HISTORY_LIMIT = 30;
 const HISTORY_KEY = "ai-model-history";
 
-export type AiModelHistoryItem = { storageKey: string; role: AiModelPortrait["role"] };
+/** prompt 在旧记录里可能缺失（字段后加），预览面板需要按可选处理。 */
+export type AiModelHistoryItem = { storageKey: string; role: AiModelPortrait["role"]; prompt?: string };
 
 export type AiModelHistoryRecord = {
     id: string;
@@ -32,17 +33,11 @@ export async function readAiModelHistory(): Promise<AiModelHistoryRecord[]> {
     return Array.isArray(value) ? value : [];
 }
 
-export async function appendAiModelHistory(input: {
-    model: string;
-    description: string;
-    attributes: ModelAttributes;
-    consistency: AiModelPortraitResult["consistency"];
-    portraits: AiModelPortrait[];
-}): Promise<AiModelHistoryRecord[]> {
+export async function appendAiModelHistory(input: { model: string; description: string; attributes: ModelAttributes; consistency: AiModelPortraitResult["consistency"]; portraits: AiModelPortrait[] }): Promise<AiModelHistoryRecord[]> {
     const items: AiModelHistoryItem[] = [];
     for (const portrait of input.portraits) {
         const uploaded = await uploadImage(portrait.image.dataUrl);
-        items.push({ storageKey: uploaded.storageKey, role: portrait.role });
+        items.push({ storageKey: uploaded.storageKey, role: portrait.role, prompt: portrait.prompt });
     }
     const record: AiModelHistoryRecord = {
         id: crypto.randomUUID(),

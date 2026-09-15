@@ -76,6 +76,20 @@ export const MODEL_PRESETS: readonly ModelPreset[] = [
     },
 ];
 
+/**
+ * 表单初始属性：一套开箱即可出图的通用设定。
+ * 取值与 MODEL_PRESETS 里「亚洲甜美少女」相同，但语义不同 —— 预设是命名人设，这里只是表单起点。
+ */
+export const DEFAULT_MODEL_ATTRIBUTES: ModelAttributes = {
+    gender: "女模特",
+    nationality: "亚洲",
+    style: "居家场景",
+    age: "青年",
+    bodyType: "标准",
+    skinTone: "白皙",
+    pose: "站姿正面",
+};
+
 const allowedValuesByGroup = new Map<AttributeGroupId, Set<string>>(ATTRIBUTE_GROUPS.map((group) => [group.id, new Set(group.values)]));
 
 /**

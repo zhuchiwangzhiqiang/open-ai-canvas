@@ -1,13 +1,7 @@
 import { modelCapabilityConfigFor } from "@/lib/model-capabilities";
 import { POSE_ATTRIBUTE_GROUP_ID, normalizeModelAttributes, POSE_VALUES, type ModelAttributes } from "@/lib/design/model-attributes";
 import { buildModelAnchorPrompt, buildModelVariantPrompt } from "@/lib/design/model-prompt";
-import {
-    isGenerationTaskCancelled,
-    runBackendGenerationTask,
-    runBackendGenerationTaskBatch,
-    type BackendGenerationResult,
-    type GenerationTaskDependencies,
-} from "@/services/api/generation-task";
+import { isGenerationTaskCancelled, runBackendGenerationTask, runBackendGenerationTaskBatch, type BackendGenerationResult, type GenerationTaskDependencies } from "@/services/api/generation-task";
 import type { GenerationTask } from "@/services/api/task-center";
 import type { AiConfig } from "@/stores/use-config-store";
 import type { ReferenceImage } from "@/types/image";
@@ -25,6 +19,8 @@ export type AiModelPortrait = {
     role: AiModelPortraitRole;
     taskId: string;
     image: ReferenceImage;
+    /** 当时真正发给上游的那段提示词，随历史记录落库，预览面板原样展示而不再二次拼装。 */
+    prompt: string;
 };
 
 export type AiModelPortraitFailure = { index: number; error: string };
@@ -116,9 +112,7 @@ function collectFailures(settled: Array<PromiseSettledResult<BackendGenerationRe
 
 function throwIfCancelled(settled: Array<PromiseSettledResult<BackendGenerationResult>>, signal?: AbortSignal): void {
     if (!signal?.aborted) return;
-    const cancelled = settled.find(
-        (entry): entry is PromiseRejectedResult => entry.status === "rejected" && isGenerationTaskCancelled(entry.reason, signal),
-    );
+    const cancelled = settled.find((entry): entry is PromiseRejectedResult => entry.status === "rejected" && isGenerationTaskCancelled(entry.reason, signal));
     throw cancelled ? cancelled.reason : new Error("生成已取消");
 }
 
@@ -126,22 +120,21 @@ function throwIfCancelled(settled: Array<PromiseSettledResult<BackendGenerationR
  * 两阶段生成：先按属性生成一张母版锁定身份，再以母版为参考图派生剩余张数。
  * 模型不支持参考图时退化为互相独立的候选图，并在结果里如实标记 consistency。
  */
-export async function generateAiModelPortraits(
-    input: AiModelPortraitInput,
-    runner: AiModelGenerationRunner = defaultRunner,
-    dependencies?: GenerationTaskDependencies,
-): Promise<AiModelPortraitResult> {
+export async function generateAiModelPortraits(input: AiModelPortraitInput, runner: AiModelGenerationRunner = defaultRunner, dependencies?: GenerationTaskDependencies): Promise<AiModelPortraitResult> {
     const count = clampPortraitCount(input.count);
     const attributes = normalizeModelAttributes(input.attributes);
     // 每个任务只产出一张，张数完全由任务数决定，避免 config.count 再放大。
     const singleConfig: AiConfig = { ...input.config, count: "1" };
+
+    // 两处母版请求共用同一段文本，顺带保证落库的 prompt 与真正发出去的一致。
+    const anchorPrompt = buildModelAnchorPrompt(attributes, input.description);
 
     if (!supportsModelReference(input.config)) {
         input.onPhase?.({ phase: "anchoring" });
         const settled = await runner.runBatch(
             {
                 mode: "image",
-                prompt: buildModelAnchorPrompt(attributes, input.description),
+                prompt: anchorPrompt,
                 config: singleConfig,
                 count,
                 signal: input.signal,
@@ -155,7 +148,7 @@ export async function generateAiModelPortraits(
         settled.forEach((entry) => {
             if (entry.status !== "fulfilled") return;
             const image = firstReference(entry.value);
-            if (image) portraits.push({ id: image.id, role: "candidate", taskId: "", image });
+            if (image) portraits.push({ id: image.id, role: "candidate", taskId: "", image, prompt: anchorPrompt });
         });
         const failed = collectFailures(settled);
         if (!portraits.length) throw new Error(failed[0]?.error || "生成失败");
@@ -167,7 +160,7 @@ export async function generateAiModelPortraits(
     const anchorResult = await runner.runTask(
         {
             mode: "image",
-            prompt: buildModelAnchorPrompt(attributes, input.description),
+            prompt: anchorPrompt,
             config: singleConfig,
             signal: input.signal,
             metadata: { scene: "ai_model", portraitRole: "anchor" },
@@ -180,7 +173,7 @@ export async function generateAiModelPortraits(
     );
     const anchorImage = firstReference(anchorResult);
     if (!anchorImage) throw new Error("母版生成未返回图片");
-    const anchor: AiModelPortrait = { id: anchorImage.id, role: "anchor", taskId: anchorTaskId, image: anchorImage };
+    const anchor: AiModelPortrait = { id: anchorImage.id, role: "anchor", taskId: anchorTaskId, image: anchorImage, prompt: anchorPrompt };
 
     const derivingTotal = count - 1;
     const poses = derivedPoses(attributes[POSE_ATTRIBUTE_GROUP_ID], derivingTotal, input.variation);
@@ -226,7 +219,8 @@ export async function generateAiModelPortraits(
             failed.push({ index, error: "任务未返回图片" });
             return;
         }
-        portraits.push({ id: image.id, role: "derive", taskId: derivedTaskIds[index], image });
+        // 纯函数按同一 pose 重算，拿到的就是该张图实际发出的变体 prompt。
+        portraits.push({ id: image.id, role: "derive", taskId: derivedTaskIds[index], image, prompt: buildModelVariantPrompt(attributes, { pose: poses[index] }, input.description) });
     });
     return { portraits, failed, consistency: "referenced" };
 }
