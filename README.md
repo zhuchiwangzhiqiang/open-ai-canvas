@@ -50,13 +50,17 @@ cd open-ai-canvas
 # 使用 Git 忽略的目录保存本地开发数据和缓存
 mkdir -p .local/project-workbench-debug .local/cache/go-build .local/cache/go-mod
 
-# 终端一：后端
+# 终端一：后端（Linux/Mac）
 cd backend
 CANVAS_BACKEND_ADDR=127.0.0.1:8080 \
 CANVAS_BACKEND_DATA_DIR=../.local/project-workbench-debug \
 GOCACHE=../.local/cache/go-build \
 GOMODCACHE=../.local/cache/go-mod \
 go run ./cmd/server
+
+# 终端一：后端（Windows）
+cd backend
+$env:CANVAS_BACKEND_DATA_DIR="../.local/project-workbench-debug"; go run ./cmd/server
 
 # 终端二：前端
 cd ../web
