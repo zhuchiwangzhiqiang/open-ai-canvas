@@ -1,5 +1,5 @@
 import { modelCapabilityConfigFor } from "@/lib/model-capabilities";
-import { normalizeModelAttributes, POSE_VALUES, type ModelAttributes } from "@/lib/design/model-attributes";
+import { normalizeModelAttributes, type ModelAttributes } from "@/lib/design/model-attributes";
 import { buildModelAnchorPrompt, buildModelVariantPrompt, deriveFraming } from "@/lib/design/model-prompt";
 import { isGenerationTaskCancelled, runBackendGenerationTask, runBackendGenerationTaskBatch, type BackendGenerationResult, type GenerationTaskDependencies } from "@/services/api/generation-task";
 import type { GenerationTask } from "@/services/api/task-center";
@@ -37,8 +37,6 @@ export type AiModelPortraitInput = {
     attributes: ModelAttributes;
     description?: string;
     count: number;
-    /** true 时派生图轮换姿势，false 时沿用属性中的姿势。 */
-    variation: boolean;
     signal?: AbortSignal;
     onPhase?: (phase: AiModelPhase) => void;
     onTask?: (task: GenerationTask) => void;
@@ -66,15 +64,6 @@ export function clampPortraitCount(count: number): number {
     const normalized = Math.floor(Number(count));
     if (!Number.isFinite(normalized) || normalized < 1) return 1;
     return Math.min(MAX_MODEL_PORTRAITS, normalized);
-}
-
-/** 派生姿势轮换：避开母版已经使用的姿势，不足时循环补齐。 */
-export function derivedPoses(anchorPose: string | undefined, total: number, variation: boolean): Array<string | undefined> {
-    if (total <= 0) return [];
-    if (!variation) return Array.from({ length: total }, () => undefined);
-    const candidates = POSE_VALUES.filter((pose) => pose !== anchorPose);
-    if (!candidates.length) return Array.from({ length: total }, () => anchorPose);
-    return Array.from({ length: total }, (_, index) => candidates[index % candidates.length]);
 }
 
 function imageResultToReference(image: BackendGenerationImage): ReferenceImage | null {

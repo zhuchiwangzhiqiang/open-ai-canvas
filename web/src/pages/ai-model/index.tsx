@@ -1,4 +1,4 @@
-import { App, Button, Input, Switch } from "antd";
+import { App, Button, Input } from "antd";
 import { LoaderCircle, Sparkles } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router";
@@ -45,7 +45,6 @@ export function AiModelWorkbench() {
     const [description, setDescription] = useState("");
     const [attributes, setAttributes] = useState<ModelAttributes>(DEFAULT_MODEL_ATTRIBUTES);
     const [presetId, setPresetId] = useState<string | undefined>(undefined);
-    const [variation, setVariation] = useState(true);
     const [busy, setBusy] = useState(false);
     const [phase, setPhase] = useState<AiModelPhase | null>(null);
     const [result, setResult] = useState<AiModelPortraitResult | null>(null);
@@ -118,7 +117,6 @@ export function AiModelWorkbench() {
                 attributes,
                 description,
                 count: PORTRAIT_COUNT,
-                variation,
                 signal: controller.signal,
                 onPhase: setPhase,
             });
@@ -192,11 +190,6 @@ export function AiModelWorkbench() {
                             }}
                         />
                     </div>
-
-                    <label className="flex items-center justify-between gap-3 text-[length:var(--fs-label)] text-foreground/72">
-                        <span>派生时自动变化姿势</span>
-                        <Switch size="small" checked={variation} disabled={busy} onChange={setVariation} />
-                    </label>
                 </div>
 
                 <div className="shrink-0 space-y-2 border-t border-border p-4">

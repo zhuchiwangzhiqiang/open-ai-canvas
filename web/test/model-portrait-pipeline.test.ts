@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 // Bun 直接执行 TypeScript 测试时需要保留扩展名；生产 tsconfig 不包含 test/。
-import { clampPortraitCount, derivedPoses, generateAiModelPortraits, supportsModelReference, type AiModelGenerationRunner, type AiModelPhase } from "../src/lib/design/model-portrait-pipeline.ts";
+import { clampPortraitCount, generateAiModelPortraits, supportsModelReference, type AiModelGenerationRunner, type AiModelPhase } from "../src/lib/design/model-portrait-pipeline.ts";
 import { DERIVE_FRAMINGS } from "../src/lib/design/model-prompt.ts";
 import type { BackendGenerationResult } from "../src/services/api/generation-task.ts";
 import type { AiConfig } from "../src/stores/use-config-store.ts";
@@ -25,7 +25,6 @@ function input(overrides: Partial<Parameters<typeof generateAiModelPortraits>[0]
         attributes: { gender: "女模特", nationality: "亚洲", style: "简约摄影棚", pose: "站姿正面" },
         description: "清冷气质",
         count: 3,
-        variation: true,
         ...overrides,
     };
 }
@@ -180,11 +179,4 @@ test("能力探测与张数收敛", () => {
     assert.equal(clampPortraitCount(0), 1);
     assert.equal(clampPortraitCount(99), 15);
     assert.equal(clampPortraitCount(3), 3);
-});
-
-test("派生姿势轮换避开母版姿势，关闭变化时沿用属性姿势", () => {
-    assert.deepEqual(derivedPoses("站姿正面", 3, true), ["侧身", "走动", "坐姿"]);
-    assert.deepEqual(derivedPoses("站姿正面", 3, false), [undefined, undefined, undefined]);
-    assert.deepEqual(derivedPoses(undefined, 2, true), ["站姿正面", "侧身"]);
-    assert.deepEqual(derivedPoses("站姿正面", 0, true), []);
 });
