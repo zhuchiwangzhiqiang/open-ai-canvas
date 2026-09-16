@@ -1,6 +1,6 @@
 import { modelCapabilityConfigFor } from "@/lib/model-capabilities";
-import { POSE_ATTRIBUTE_GROUP_ID, normalizeModelAttributes, POSE_VALUES, type ModelAttributes } from "@/lib/design/model-attributes";
-import { buildModelAnchorPrompt, buildModelVariantPrompt } from "@/lib/design/model-prompt";
+import { normalizeModelAttributes, POSE_VALUES, type ModelAttributes } from "@/lib/design/model-attributes";
+import { buildModelAnchorPrompt, buildModelVariantPrompt, deriveFraming } from "@/lib/design/model-prompt";
 import { isGenerationTaskCancelled, runBackendGenerationTask, runBackendGenerationTaskBatch, type BackendGenerationResult, type GenerationTaskDependencies } from "@/services/api/generation-task";
 import type { GenerationTask } from "@/services/api/task-center";
 import type { AiConfig } from "@/stores/use-config-store";
@@ -176,17 +176,19 @@ export async function generateAiModelPortraits(input: AiModelPortraitInput, runn
     const anchor: AiModelPortrait = { id: anchorImage.id, role: "anchor", taskId: anchorTaskId, image: anchorImage, prompt: anchorPrompt };
 
     const derivingTotal = count - 1;
-    const poses = derivedPoses(attributes[POSE_ATTRIBUTE_GROUP_ID], derivingTotal, input.variation);
-    const derivedTaskIds: string[] = new Array(poses.length).fill("");
+    // 派生与母版共用同一段 prompt 骨架，只替换「构图变体」行：第 2 张 B、第 3 张 C，更多张按 B、C 循环。
+    const framings = Array.from({ length: derivingTotal }, (_, index) => deriveFraming(index));
+    const derivedTaskIds: string[] = new Array(framings.length).fill("");
     let derivedDone = 0;
-    input.onPhase?.({ phase: "deriving", done: 0, total: poses.length });
+    // count=1 时根本没有派生任务，不能报出一个 0/0 的阶段：进度面板会据此显示"正在派生同一位模特"。
+    if (framings.length) input.onPhase?.({ phase: "deriving", done: 0, total: framings.length });
     const settled = await Promise.allSettled(
-        poses.map((pose, index) =>
+        framings.map((framing, index) =>
             runner
                 .runTask(
                     {
                         mode: "image",
-                        prompt: buildModelVariantPrompt(attributes, { pose }, input.description),
+                        prompt: buildModelVariantPrompt(attributes, { framing }, input.description),
                         config: singleConfig,
                         referenceImages: [anchor.image],
                         signal: input.signal,
@@ -200,7 +202,7 @@ export async function generateAiModelPortraits(input: AiModelPortraitInput, runn
                 )
                 .then((result) => {
                     derivedDone += 1;
-                    input.onPhase?.({ phase: "deriving", done: derivedDone, total: poses.length });
+                    input.onPhase?.({ phase: "deriving", done: derivedDone, total: framings.length });
                     return result;
                 }),
         ),
@@ -219,8 +221,8 @@ export async function generateAiModelPortraits(input: AiModelPortraitInput, runn
             failed.push({ index, error: "任务未返回图片" });
             return;
         }
-        // 纯函数按同一 pose 重算，拿到的就是该张图实际发出的变体 prompt。
-        portraits.push({ id: image.id, role: "derive", taskId: derivedTaskIds[index], image, prompt: buildModelVariantPrompt(attributes, { pose: poses[index] }, input.description) });
+        // 纯函数按同一构图变体重算，拿到的就是该张图实际发出的派生 prompt。
+        portraits.push({ id: image.id, role: "derive", taskId: derivedTaskIds[index], image, prompt: buildModelVariantPrompt(attributes, { framing: framings[index] }, input.description) });
     });
     return { portraits, failed, consistency: "referenced" };
 }

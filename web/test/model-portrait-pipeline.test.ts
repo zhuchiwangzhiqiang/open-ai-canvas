@@ -3,6 +3,7 @@ import test from "node:test";
 
 // Bun 直接执行 TypeScript 测试时需要保留扩展名；生产 tsconfig 不包含 test/。
 import { clampPortraitCount, derivedPoses, generateAiModelPortraits, supportsModelReference, type AiModelGenerationRunner, type AiModelPhase } from "../src/lib/design/model-portrait-pipeline.ts";
+import { DERIVE_FRAMINGS } from "../src/lib/design/model-prompt.ts";
 import type { BackendGenerationResult } from "../src/services/api/generation-task.ts";
 import type { AiConfig } from "../src/stores/use-config-store.ts";
 
@@ -60,7 +61,12 @@ test("支持参考图时先出母版，再以母版为参考图派生剩余张�
     // 派生必须携带母版参考图，这就是身份一致性的来源。
     assert.equal(taskCalls[1].referenceImages?.[0], result.portraits[0].image);
     assert.equal(taskCalls[2].referenceImages?.[0], result.portraits[0].image);
-    assert.ok(taskCalls[1].prompt.includes("一致性要求"));
+    assert.ok(taskCalls[1].prompt.includes(DERIVE_FRAMINGS[0]));
+    assert.ok(taskCalls[2].prompt.includes(DERIVE_FRAMINGS[1]));
+    // 派生带参考图，必须说明参考图只锁身份：否则模型会沿用母版的全身构图，裁不出更近的取景。
+    assert.ok(taskCalls[1].prompt.includes("不要沿用参考图的构图、裁切和背景"));
+    assert.ok(taskCalls[2].prompt.includes("不要沿用参考图的构图、裁切和背景"));
+    assert.equal(taskCalls[0].prompt.includes("参考图"), false);
     assert.notEqual(taskCalls[1].prompt, taskCalls[2].prompt);
 
     // 预览面板直接展示 portrait.prompt，它必须逐字等于当时发给上游的那段文本。
@@ -71,6 +77,39 @@ test("支持参考图时先出母版，再以母版为参考图派生剩余张�
 
     assert.deepEqual(phases[0], { phase: "anchoring" });
     assert.deepEqual(phases[phases.length - 1], { phase: "deriving", done: 2, total: 2 });
+});
+
+test("count=1 时只出母版，且不产生派生阶段", async () => {
+    const taskCalls: TaskOptions[] = [];
+    const runner = {
+        runTask: async (options: TaskOptions) => {
+            taskCalls.push(options);
+            return imageResult(`data:image/png;base64,${taskCalls.length}`);
+        },
+        runBatch: async () => {
+            throw new Error("支持参考图时不应走批量候选分支");
+        },
+    } as unknown as AiModelGenerationRunner;
+
+    const phases: AiModelPhase[] = [];
+    const result = await generateAiModelPortraits(input({ count: 1, onPhase: (phase) => phases.push(phase) }), runner);
+
+    assert.equal(taskCalls.length, 1);
+    assert.deepEqual(
+        result.portraits.map((portrait) => portrait.role),
+        ["anchor"],
+    );
+    assert.equal(result.consistency, "referenced");
+    assert.equal(result.failed.length, 0);
+    // 没有派生任务就不该报出 0/0 的派生阶段，否则进度面板会显示"正在派生同一位模特"。
+    assert.deepEqual(phases, [{ phase: "anchoring" }]);
+
+    // 母版走逐项人物设定 + 固定构图约束的骨架，且落库 prompt 与真正发出的那段逐字一致。
+    assert.equal(taskCalls[0].metadata?.portraitRole, "anchor");
+    assert.equal(taskCalls[0].referenceImages, undefined);
+    assert.ok(taskCalls[0].prompt.includes("人物设定：\n- 性别：女模特"));
+    assert.ok(taskCalls[0].prompt.includes("构图：全身人像，从头顶到脚底完整入画"));
+    assert.equal(result.portraits[0].prompt, taskCalls[0].prompt);
 });
 
 test("模型不吃参考图时退化为候选图，并标记未锁定身份", async () => {
