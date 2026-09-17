@@ -14,10 +14,8 @@ export type ModelAttributeGroup = {
 export type ModelPreset = {
     id: string;
     title: string;
-    /** 卡片副文案：说明适用场景，不进入 prompt。 */
+    /** 原型简介：既是卡片副文案，也是点选后回填到描述输入框的提示词种子。 */
     summary: string;
-    /** 点击预设时回填到描述输入框的提示词种子。 */
-    description: string;
     attributes: ModelAttributes;
 };
 
@@ -50,28 +48,24 @@ export const MODEL_PRESETS: readonly ModelPreset[] = [
         id: "asian-sweet-girl",
         title: "亚洲甜美少女",
         summary: "清透妆容、亲和微笑，适合女装日常主图",
-        description: "清透妆容，亲和微笑，气质干净",
         attributes: { gender: "女模特", nationality: "亚洲", age: "青年", bodyType: "标准", skinTone: "白皙", style: "居家场景", pose: "站姿正面" },
     },
     {
         id: "western-tall-model",
         title: "欧美高挑女模",
         summary: "大长腿、时尚大片感，适合服饰 Lookbook",
-        description: "大长腿，时尚大片感，气场利落",
         attributes: { gender: "女模特", nationality: "欧美", age: "青年", bodyType: "高挑", skinTone: "自然", style: "时尚大片", pose: "站姿正面" },
     },
     {
         id: "plus-size-shopper",
         title: "大码真实买家",
         summary: "真实体态、生活场景，适合大码品类种草",
-        description: "真实体态，生活化，亲和自然",
         attributes: { gender: "女模特", nationality: "亚洲", age: "成熟", bodyType: "大码", skinTone: "自然", style: "居家场景", pose: "侧身" },
     },
     {
         id: "urban-male-model",
         title: "都市型男",
         summary: "利落干净、街头实拍，适合男装主图",
-        description: "利落干净，都市感，神情自然",
         attributes: { gender: "男模特", nationality: "亚洲", age: "青年", bodyType: "标准", skinTone: "自然", style: "街头实拍", pose: "站姿正面" },
     },
 ];

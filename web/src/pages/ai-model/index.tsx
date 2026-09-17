@@ -84,9 +84,10 @@ export function AiModelWorkbench() {
         return requestCreditCost({ channelMode: selectedConfig.channelMode, modelCosts: channel.modelCosts, model: modelOptionName(selectedModel), count: PORTRAIT_COUNT, capability: "image", config: selectedConfig });
     }, [selectedConfig, selectedModel]);
 
+    // 描述直接用原型的简介：卡片上看到什么，点选后就回填什么，用户不必从零改写。
     const applyPreset = (preset: ModelPreset) => {
         setAttributes(preset.attributes);
-        setDescription(preset.description);
+        setDescription(preset.summary);
         setPresetId(preset.id);
     };
 
