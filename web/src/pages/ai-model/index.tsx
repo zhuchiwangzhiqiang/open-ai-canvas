@@ -19,6 +19,8 @@ import { ModelResultPanel } from "@/pages/ai-model/model-result-panel";
 import { saveAiModelRecordToAssets } from "@/pages/ai-model/model-asset-sync";
 import { isGenerationTaskCancelled } from "@/services/api/generation-task";
 import { modelOptionName, resolveModelChannel, useEffectiveConfig, type AiConfig } from "@/stores/use-config-store";
+// 卡片里的模型选择器皮肤：独立 /ai-model 路由与设计中心内嵌两种挂载都要加载。
+import "@/pages/design/design-tools.css";
 
 const PORTRAIT_COUNT = 3;
 

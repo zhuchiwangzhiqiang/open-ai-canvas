@@ -1,0 +1,40 @@
+/*
+ * 设计中心工具（AI 模特 / AI 模特图）卡片里的模型选择器皮肤。
+ *
+ * 为什么不做进 globals.css：上游几乎每天改那个文件（最近 30 次改动覆盖 09-03～09-17 每一天，
+ * 单次可达 +3593/-258 行），新章节又都往文件尾部追加。本地这 30 行皮肤夹在尾部区域里，
+ * 每次拉上游都要重新解一次冲突；挪到这里由使用方 import，冲突面只剩自己这一份。
+ *
+ * creation 变体默认是创作页那套写死底色的灰胶囊（#202329 / #f0f2f5），
+ * 放进工作台卡片里底色不搭，这里换成与创作输入区同一套工作台胶囊皮肤（令牌取自 --user-*，明暗自动跟随）。
+ */
+.app-user-workspace .design-tool-picker.creation-model-picker.canvas-composer-model-picker {
+    width: 100%;
+    height: 40px;
+    min-height: 40px;
+    padding-inline: 14px;
+    border: 0;
+    border-radius: 999px;
+    background: var(--user-surface-muted);
+    color: var(--user-ink);
+    font-size: 13px;
+    font-weight: 560;
+    box-shadow: none;
+}
+
+/* 标签占满剩余宽度，价格与箭头才会贴到胶囊右端，选中模型名也能正常截断。 */
+.app-user-workspace .design-tool-picker.creation-model-picker.canvas-composer-model-picker .canvas-model-picker-label {
+    flex: 1;
+    min-width: 0;
+}
+
+/* 图标底色来自画布主题的内联样式，在浅色工作台里会变成一块看不出来的半透明白，直接去掉。 */
+.app-user-workspace .design-tool-picker.creation-model-picker.canvas-composer-model-picker .canvas-model-picker-trigger-icon {
+    background: transparent !important;
+}
+
+.app-user-workspace .design-tool-picker.creation-model-picker.canvas-composer-model-picker:hover,
+.app-user-workspace .design-tool-picker.creation-model-picker.canvas-composer-model-picker[aria-expanded="true"] {
+    background: var(--user-surface-hover);
+    color: var(--user-ink);
+}
