@@ -156,7 +156,19 @@ export function AiModelWorkbench() {
                 <div className="hide-scrollbar space-y-5 px-4 pt-3 pb-4 xl:min-h-0 xl:flex-1 xl:overflow-y-auto xl:overscroll-contain">
                     <div>
                         <SectionTitle index={1} title="模型" hint="用户可选" />
-                        <ModelPicker config={selectedConfig} value={selectedModel} onChange={setSelectedModel} capability="image" fullWidth showSelectedPrice showOptionPrices placeholder="选择图片模型" onMissingConfig={() => navigate("/settings")} />
+                        {/* 与创作页、Agent 设置保持一致：creation 变体是品牌二级列表 + 48px 胶囊触发器。 */}
+                        <ModelPicker
+                            config={selectedConfig}
+                            value={selectedModel}
+                            onChange={setSelectedModel}
+                            capability="image"
+                            variant="creation"
+                            className="creation-model-picker"
+                            showSelectedPrice
+                            showOptionPrices
+                            placeholder="选择图片模型"
+                            onMissingConfig={() => navigate("/settings")}
+                        />
                         {!referenceSupported ? <p className="mt-2 text-[length:var(--fs-micro)] leading-4 text-foreground/52">当前模型不支持参考图，这批图之间无法锁定为同一位模特。</p> : null}
                     </div>
 
