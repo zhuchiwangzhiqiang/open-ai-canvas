@@ -19640,6 +19640,36 @@ html:not(.dark) .creation-home .creation-user-message-copy-wrap { box-shadow: 0 
 .app-user-workspace .creation-model-picker-menu .canvas-model-picker-option .text-amber-600 svg { width: 13px; height: 13px; }
 .dark .app-user-workspace .creation-model-picker-menu .canvas-model-picker-option .text-amber-600,
 .dark .app-user-workspace .creation-model-picker-menu .canvas-model-picker-option .dark\:text-amber-300 { color: #f0a943 !important; background: color-mix(in srgb, #e28a17 18%, var(--user-surface)) !important; }
+
+/* 设计中心工具（AI 模特 / AI 模特图）卡片里的模型选择器：creation 变体默认是创作页那套灰底胶囊，
+   放进工作台卡片里底色不搭，这里换成与创作输入区同一套工作台胶囊皮肤（令牌取自 --user-*，明暗自动跟随）。 */
+.app-user-workspace .design-tool-picker.creation-model-picker.canvas-composer-model-picker {
+    width: 100%;
+    height: 40px;
+    min-height: 40px;
+    padding-inline: 14px;
+    border: 0;
+    border-radius: 999px;
+    background: var(--user-surface-muted);
+    color: var(--user-ink);
+    font-size: 13px;
+    font-weight: 560;
+    box-shadow: none;
+}
+/* 标签占满剩余宽度，价格与箭头才会贴到胶囊右端，选中模型名也能正常截断。 */
+.app-user-workspace .design-tool-picker.creation-model-picker.canvas-composer-model-picker .canvas-model-picker-label {
+    flex: 1;
+    min-width: 0;
+}
+/* 图标底色来自画布主题的内联样式，在浅色工作台里会变成一块看不出来的半透明白，直接去掉。 */
+.app-user-workspace .design-tool-picker.creation-model-picker.canvas-composer-model-picker .canvas-model-picker-trigger-icon {
+    background: transparent !important;
+}
+.app-user-workspace .design-tool-picker.creation-model-picker.canvas-composer-model-picker:hover,
+.app-user-workspace .design-tool-picker.creation-model-picker.canvas-composer-model-picker[aria-expanded="true"] {
+    background: var(--user-surface-hover);
+    color: var(--user-ink);
+}
 .app-user-workspace .creation-launchpad .creation-mode-capsule .creation-chat-control:focus-visible,
 .app-user-workspace .creation-launchpad .suggest-card:focus-visible {
     outline: 2px solid var(--user-accent);

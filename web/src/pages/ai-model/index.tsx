@@ -163,7 +163,7 @@ export function AiModelWorkbench() {
                             onChange={setSelectedModel}
                             capability="image"
                             variant="creation"
-                            className="creation-model-picker"
+                            className="creation-model-picker design-tool-picker"
                             showSelectedPrice
                             showOptionPrices
                             placeholder="选择图片模型"
