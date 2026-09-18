@@ -8,6 +8,15 @@ type (
 	CloudAgentCapabilitySet                = app.CloudAgentCapabilitySet
 	AgentProfileRequest                    = app.AgentProfileRequest
 	AgentProfileView                       = app.AgentProfileView
+	AgentLessonView                        = app.AgentLessonView
+	AgentLessonAdminView                   = app.AgentLessonAdminView
+	AgentMemoryRequest                     = app.AgentMemoryRequest
+	AgentMemoryBundle                      = app.AgentMemoryBundle
+	AgentMemoryImportResult                = app.AgentMemoryImportResult
+	AgentMemoryCompactRequest              = app.AgentMemoryCompactRequest
+	AgentMemorySettingRequest              = app.AgentMemorySettingRequest
+	AgentMemoryCompactView                 = app.AgentMemoryCompactView
+	AgentMemoryCompactSummary              = app.AgentMemoryCompactSummary
 	APICallLogPage                         = app.APICallLogPage
 	APICallLogQuery                        = app.APICallLogQuery
 	AccountFileStorageUsage                = app.AccountFileStorageUsage
@@ -98,6 +107,7 @@ type (
 	ConfirmProjectAssetCandidateRequest    = app.ConfirmProjectAssetCandidateRequest
 	CreateAdminUserRequest                 = app.CreateAdminUserRequest
 	CreateAnnouncementRequest              = app.CreateAnnouncementRequest
+	CreateBannerAnnouncementRequest        = app.CreateBannerAnnouncementRequest
 	CreateAssetCandidatesRequest           = app.CreateAssetCandidatesRequest
 	CreateAssetFolderRequest               = app.CreateAssetFolderRequest
 	CreateAssetVersionRequest              = app.CreateAssetVersionRequest
@@ -293,6 +303,7 @@ type (
 	TimelineTranscriptionCreateRequest     = app.TimelineTranscriptionCreateRequest
 	TopupProductRequest                    = app.TopupProductRequest
 	UpdateAnnouncementRequest              = app.UpdateAnnouncementRequest
+	UpdateBannerAnnouncementRequest        = app.UpdateBannerAnnouncementRequest
 	UpdateAssetFolderRequest               = app.UpdateAssetFolderRequest
 	UpdateManager                          = app.UpdateManager
 	UpdatePaymentProviderConfigRequest     = app.UpdatePaymentProviderConfigRequest

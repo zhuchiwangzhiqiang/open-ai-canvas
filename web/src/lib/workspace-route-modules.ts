@@ -6,7 +6,6 @@ const workspaceRouteLoaders = {
     design: () => import("@/pages/design"),
     projects: () => import("@/pages/projects"),
     projectDetail: () => import("@/pages/projects/detail"),
-    wallet: () => import("@/pages/wallet"),
 };
 
 export const loadAiModelPage = workspaceRouteLoaders["ai-model"];
@@ -17,7 +16,6 @@ export const loadCreatePage = workspaceRouteLoaders.create;
 export const loadDesignCenterPage = workspaceRouteLoaders.design;
 export const loadProjectDetailPage = workspaceRouteLoaders.projectDetail;
 export const loadProjectsPage = workspaceRouteLoaders.projects;
-export const loadWalletPage = workspaceRouteLoaders.wallet;
 
 export function preloadWorkspaceRoute(pathnameOrSlug: string) {
     // 根路径就是创作页，预加载时仍映射到其内部模块名。
